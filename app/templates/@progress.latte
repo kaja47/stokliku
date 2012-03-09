@@ -1,5 +1,3 @@
-
-
   <h2>
   {dump $userProgress}
     <a n:tag-if="$userProgress->type == 'twitter'" href="http://twitter.com/{$userProgress->name}">{$userProgress|userName}</a></h2>
@@ -18,14 +16,14 @@
 	{/if}
   
   {if $isLoggedUser}
-    <a href="#" onclick="document.getElementById('changeStartDate').style.display='inline'">Začal jsem jindy.</a>
+    {*<a href="#" onclick="document.getElementById('changeStartDate').style.display='inline'">Začal jsem jindy.</a>
     <span id="changeStartDate" style="display: none;">
     Kdy?
     {form changeStartDate}
       {input date}
       {input change}
     {/form}
-    </span>
+    </span>*}
   {/if}
     
   <table>
@@ -35,16 +33,18 @@
       <td style="min-width: 12em;">kliky</td>
       <td>celkem</td>
     </tr>
-    <tr n:foreach="$userProgress->progress as $day => $d" n:class="$d->projection ? projection" n:attr="style => $d->lastDay ? 'border-bottom: 2px solid black;'">
-      <td>{$day}</td>
-      <td>{if $d->today}<strong>dnes</strong>{else}{$d->date|date:"d. m. Y"}{/if}</td>
+    <tr n:foreach="$userProgress->progress as $dayNumber => $day" n:class="$day->projection ? projection" n:attr="style => $day->lastDay ? 'border-bottom: 2px solid black;'">
+      <td>{$dayNumber}</td>
+      <td>{if $day->today}<strong>dnes</strong>{else}{$day->date|date:"d. m. Y"}{/if}</td>
       <td>
-        {$d->projection ? 'todo: ' : ''}
-        {foreach $d->series as $sid => $s}
-          <strong n:tag-if="!$d->projection && $s == $d->cumulativeMax">{$s}<small><a onclick="return confirm('Opravdu chcete smazat sérii '+{$s}+' kliků?')" n:if="$d->ago < 1 && !$d->projection && $isLoggedUser" n:href="deleteSeries!! $sid" title="smazat sérii {$s} kliků">[x]</a></small></strong>{sep}, {/sep}
+        {$day->projection ? 'todo: ' : ''}
+        {foreach $day->series as $sid => $s}
+          {var $highligtSeries = !$day->projection && $s == $day->cumulativeMax}
+          {var $canDelete = $day->ago < 1 && !$day->projection && $isLoggedUser}
+          <strong n:tag-if="$highligtSeries">{$s}</strong><a class="del" n:if="$canDelete" onclick="return confirm('Opravdu chcete smazat sérii '+{$s}+' kliků?')" n:href="deleteSeries! $sid" title="Smazat sérii {$s} kliků">[x]</a>{sep}, {/sep}
         {/foreach}
       </td>
-      <td>{$d->projection ? '' : $d->sum}</td>
+      <td title="celkem {$day->cumulativeSum} kliků">{$day->projection ? '' : $day->sum}</td>
     </tr>
     <tr>
       <td></td>

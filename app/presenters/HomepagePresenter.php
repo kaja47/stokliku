@@ -223,9 +223,9 @@ class HomepagePresenter extends BasePresenter
   }
 
 
-  function actionList()
+  function actionList($complete = false)
   {
-    $this->template->users = $this->model->getUsers();
+    $this->template->users = $this->model->getUsers($complete);
   }
 
 

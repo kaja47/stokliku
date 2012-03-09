@@ -3,14 +3,19 @@
     <tr>
       <td></td>
       <td>korba</td>
-      <td>maximum kliků</td>
-      {*<td>zbývá dnů</td>*}
+      <td>maximum</td>
+      <td>celkem</td>
+      <td>dnů</td>
+      <td>denní průměr</td>
     </tr>
+
     <tr n:foreach="$users as $u">
       <td>{$iterator->counter}</td>
       <td><a n:href="user $u->name, $u->type"><span n:tag-if="$user->loggedIn && $user->id == $u->id" style="color: red;">{$u|userName}<span></a></td>
-      <td title="celkem {$u->sum} kliků">{$u->max}</td>
-      {*<td>{$u->daysLeft}</td>*}
+      <td class="num">{$u->max}</td>
+      <td class="num">{$u->sum}</td>
+      <td class="num" title="neaktivní už: {$u->daysUnactive} dnů, skutečně klikoval: {$u->activeDays} dnů">{$u->days}</td>
+      <td class="num">{round($u->sum / $u->days, 1)}</td>
     </tr>
   </table>
 {/block}
@@ -21,17 +26,14 @@
   {include #userList users => $users->normal}
   <div>Všichni dohromady udělali {$users->normalSum} kliků.</div>
 
+  <a n:href="list true">kompletní seznam</a>
+  <br />
+  <br />
+
   <div n:if="$users->zero">
   <strong>zatím nula kliků:</strong>  
   {foreach $users->zero as $u}
     {$u->name} {sep}, {/sep}
-  {/foreach}
-  </div>
-
-  <div n:if="$users->unactive">
-  <strong>neaktivní:</strong>
-  {foreach $users->unactive as $u}
-    <a n:href="user $u->name, $u->type">{$u->name}</a> {sep}, {/sep}
   {/foreach}
   </div>
 
@@ -40,5 +42,15 @@
   {include #userList users => $users->super}
   {/if}
 
+  <div n:if="$users->unactive">
+  <strong>neaktivní:</strong>
+  {dump $users->unactive}
+  {foreach $users->unactive as $u}
+    <a n:href="user $u->name, $u->type">{$u->name}</a> (<span title="celkem {$u->sum} kliků">{$u->max}</span>) {sep}, {/sep}
+  {/foreach}
+  </div>
+
 	<hr>
+
 {/block}
+

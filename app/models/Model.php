@@ -55,7 +55,7 @@ class Model extends Nette\Object
   }
 
 
-  function getUser($name, $type = null) { 
+  function getUser($name, $type = null) {
     $q = $this->db->table('users')->where('name = ?', $name);
     if ($type !== null) $q = $q->where('type', $type);
     return $q->fetch();
@@ -167,15 +167,15 @@ class Model extends Nette\Object
   function getUsers($completeList = false)
   {
     $res = $this->db->query('
-      select u.*, 
-        ifnull(max(count), 0) max, 
-        ifnull(sum(count), 0) sum, 
+      select u.*,
+        ifnull(max(count), 0) max,
+        ifnull(sum(count), 0) sum,
         to_days(now()) - to_days(u.started)     days,
         to_days(u.started) + ? - to_days(now()) daysLeft,
         to_days(now()) - to_days(max(s.day))    daysUnactive,
         count(distinct to_days(s.day))          activeDays
 
-      from users u 
+      from users u
       left join series s on u.id = s.userId
       where deleted = false
       group by u.id

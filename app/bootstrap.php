@@ -33,7 +33,7 @@ $container->session->setExpiration('+14 days');
 // Setup router
 $router = $container->router;
 $router[] = new Route('index.php', 'Homepage:default', Route::ONE_WAY);
-$router[] = new Route('<type>/<name>', array(
+$router[] = new Route('<type>/<name>[/<page=1>]', array(
   'presenter' => 'Homepage',
   'action' => 'user',
   'type' => array(
