@@ -164,14 +164,17 @@ class Model extends Nette\Object
 
 
   /** return list of users and their maximum */
-  function getUsers()
+  function getUsers($completeList = false)
   {
     $res = $this->db->query('
       select u.*, 
         ifnull(max(count), 0) max, 
         ifnull(sum(count), 0) sum, 
+        to_days(now()) - to_days(u.started)     days,
         to_days(u.started) + ? - to_days(now()) daysLeft,
-        to_days(now()) - to_days(max(s.day)) daysUnactive
+        to_days(now()) - to_days(max(s.day))    daysUnactive,
+        count(distinct to_days(s.day))          activeDays
+
       from users u 
       left join series s on u.id = s.userId
       where deleted = false
@@ -186,12 +189,16 @@ class Model extends Nette\Object
       'unactive' => array(),
     );
 
-    foreach ($res as $u) {
-      if ($u->max == 0)               $users->zero[]     = $u;
-      elseif ($u->daysUnactive >= 14) $users->unactive[] = $u;
-      elseif ($u->max > 100)          $users->super[]    = $u;
-      else                            $users->normal[]   = $u;
-    }
+    if ($completeList)
+      foreach ($res as $u)
+        $users->normal[] = $u;
+    else
+      foreach ($res as $u) {
+        if ($u->max == 0)               $users->zero[]     = $u;
+        elseif ($u->daysUnactive >= 14) $users->unactive[] = $u;
+        elseif ($u->max > 140)          $users->super[]    = $u;
+        else                            $users->normal[]   = $u;
+      }
 
     $users->normalSum = array_sum(array_map(function ($u) { return $u->sum; }, $users->normal));
     return $users;
