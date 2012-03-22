@@ -208,6 +208,44 @@ class Model extends Nette\Object
     return $users;
   }
 
+
+  function getStats()
+  {
+    $res = $this->db->query('
+      select
+        date(day) date,
+        count(distinct userId) dayActiveUsers,
+        count(*)   daySeries,
+        sum(count) daySum,
+        group_concat(distinct userId order by userId) dayActiveUserIds
+      from series s
+      group by date(day)
+    ')->fetchAll();
+
+    foreach ($res as $k => $r) { $r->dayActiveUserIds = explode(',', $r->dayActiveUserIds); }
+
+    foreach ($res as $k => $r) {
+      $getActiveUsers = function ($res, $daysBack, $k) {
+        $start = $k - $daysBack + 1;
+        $pastDays = array_slice($res, max($start, 0), $daysBack + min($start, 0));
+        $pastDays = array_map(function ($a) { return $a->dayActiveUserIds; }, $pastDays);
+        return count(array_unique(call_user_func_array('array_merge', $pastDays)));
+      };
+      $r->activeUsers = array(
+         3 => $getActiveUsers($res,  3, $k),
+         7 => $getActiveUsers($res,  7, $k),
+        14 => $getActiveUsers($res, 14, $k),
+      );
+    }
+
+    foreach ($res as $k => $r) { 
+      unset($r->dayActiveUserIds);
+    }
+
+    return $res;
+  }
+
+
   function addSeries($user, $count)
   {
     $this->db->exec('insert into series', array(
