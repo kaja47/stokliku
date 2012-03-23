@@ -15,7 +15,7 @@
       <td class="num">{$u->max}</td>
       <td class="num">{$u->sum}</td>
       <td class="num" title="neaktivní už: {$u->daysUnactive} dnů, skutečně klikoval: {$u->activeDays} dnů">{$u->days}</td>
-      <td class="num">{round($u->sum / $u->days, 1)}</td>
+      <td class="num">{$u->days > 0 ? round($u->sum / $u->days, 1) : 0}</td>
     </tr>
   </table>
 {/block}
