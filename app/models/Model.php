@@ -168,6 +168,109 @@ class Model extends Nette\Object
   }
 
 
+  function getUserProgressNew($userName, $type)
+  {
+    $user = $this->db->table('users')->where('name', $userName)->where('type', $type)->fetch();
+    if (!$user)
+      return NULL;
+
+    $res = $this->db->query('
+      select
+        to_days(day) day,
+        date(day) date,
+        group_concat(concat(id, ":", count) order by id) series
+      from series
+      where userId = ?
+        and deleted = false
+      group by date(day) desc
+    ', $user->id)->fetchAll();
+
+    $_days = $this->db->query('select to_days(now()) today, to_days(?) started', $user->started)->fetch();
+    $startDay = $_days->started;
+    $today    = $_days->today;
+    $endDay   = $startDay + $this->duration;
+
+    $progress = array();
+
+    $lastDay = $today;
+    $lastDate = new Nette\DateTime();
+    $first = true;
+    foreach ($res as $r) {
+      if ($first) {
+        if ($lastDay > $r->day) $progress[] = (object) array(
+          'day'    => $lastDay,
+          'date'   => $lastDate->format('Y-m-d'),
+          'series' => array(),
+          'today'  => true,
+        );
+        $first = false;
+      }
+
+      // insert skipped days
+      if ($lastDay !== null) {
+        $skippedDays = $lastDay - $r->day - 1; // -1 causes that today is never added as skipped day
+        if ($skippedDays > 1) {
+          $progress[] = (object) array(
+            'skipped' => $skippedDays,
+          );
+        } else {
+          for ($i = 1; $i <= $skippedDays; $i++) {
+            $lastDate = clone $lastDate; // there is cloned base lastDate or lastDate from which one day was substracted
+            $progress[] = (object) array(
+              'day'    => $lastDay - $i,
+              'date'   => $lastDate->modify('- 1 days')->format('Y-m-d'),
+              'series' => array(),
+            );
+          }
+        }
+      }
+
+      $series = array();
+      foreach (explode(',', $r->series) as $ex) {
+        list($id, $count) = explode(':', $ex);
+        $series[$id] = $count;
+      }
+
+      $progress[] = (object) array(
+        'day'    => $r->day,
+        'date'   => $r->date,
+        'series' => $series,
+      );
+
+      $lastDay = $r->day;
+      $lastDate = new Nette\DateTime($r->date);
+    }
+
+    // do aggregations
+    $sumTotal = $currentMax = $cumulativeMax = $cumulativeDaySumMax = 0;
+    $progress = array_reverse($progress);
+    foreach ($progress as $row) {
+      if (isset($row->skipped))
+        continue;
+
+      $row->sum = array_sum($row->series);
+      $row->max = $row->series ? max($row->series) : 0;
+
+      $cumulativeDaySumMax = max($cumulativeDaySumMax, $row->sum);
+      $row->sumRecord = $row->sum >= $cumulativeDaySumMax;
+
+      $row->cumulativeMax = $currentMax = max($currentMax, $row->max);
+      $row->cumulativeSum = $cumulativeMax = ($cumulativeMax + $row->sum);
+      $sumTotal += $row->sum;
+    }
+    $progress = array_reverse($progress);
+
+    $user->progress = $progress;
+    $user->sumTotal = $sumTotal; // celkem kliků
+    $user->startDay = $startDay;
+    $user->endDay   = $endDay;
+    $user->today    = $today;
+    $user->remaining = $endDay - reset($progress)->day;
+
+    return $user;
+  }
+
+
   /** return list of users and their maximum */
   function getUsers($completeList = false)
   {
