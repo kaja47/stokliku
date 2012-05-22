@@ -241,7 +241,8 @@ class HomepagePresenter extends BasePresenter
 
   function actionUser($name, $type)
   {
-    $progress = $this->model->getUserProgress($name, $type);
+    $progress = $this->model->getUserProgressNew($name, $type);
+
     if (!$progress) {
       $this->flashMessage('No such user');
       $this->redirect('default');
