@@ -172,12 +172,15 @@ class HomepagePresenter extends BasePresenter
 
   function createComponentSeriesForm()
   {
+    $exercises = $this->model->getExcercises();
+
 		$form = new UI\Form;
     $form->addText('count', 'počet')
       ->setType('number')
       ->setRequired()
       ->addRule(UI\Form::RANGE, 'ale ale ale', array(1, 9001))
       ->setDefaultValue(1);
+    $form->addSelect('exercise', 'cvik', $exercises);
     $form->addSubmit('add', 'potvrdit');
     $form->onSuccess[] = callback($this, 'addSeries');
     return $form;
@@ -208,20 +211,22 @@ class HomepagePresenter extends BasePresenter
 
   function addSeries(UI\Form $form)
   {
-    $count = $form->values->count;
-    $this->model->addSeries($this->user, $count);
-    if ($count == 1) {
-      $this->flashMessage("Jenom jeden klik? S takovouhle bysme ten socialismus nevybudovali.");
-    } elseif ($count < 5) {
-      $this->flashMessage("Jenom $count kliky? S takovouhle bysme ten socialismus nevybudovali.");
-    } elseif ($count == 5) {
-      $this->flashMessage("Jenom $count kliků? S takovouhle bysme ten socialismus nevybudovali.");
-    } elseif ($count >= 300) {
-      $this->flashMessage("ಠ_ಠ");
-    } elseif ($count >= 150) {
-      $this->flashMessage("No ty vole! ");
-    } elseif ($count >= 100) {
-      $this->flashMessage("Mission accomplished.");
+    $v = $form->values;
+    $this->model->addSeries($this->user, $v->count, $v->exercise);
+    if ($v->exercise == 1) {
+      if ($v->count == 1) {
+        $this->flashMessage("Jenom jeden klik? S takovouhle bysme ten socialismus nevybudovali.");
+      } elseif ($v->count < 5) {
+        $this->flashMessage("Jenom $v->count kliky? S takovouhle bysme ten socialismus nevybudovali.");
+      } elseif ($v->count == 5) {
+        $this->flashMessage("Jenom $v->count kliků? S takovouhle bysme ten socialismus nevybudovali.");
+      } elseif ($v->count >= 300) {
+        $this->flashMessage("ಠ_ಠ");
+      } elseif ($v->count >= 150) {
+        $this->flashMessage("No ty vole! ");
+      } elseif ($v->count >= 100) {
+        $this->flashMessage("Mission accomplished.");
+      }
     }
     $this->redirect('default');
   }
@@ -230,6 +235,7 @@ class HomepagePresenter extends BasePresenter
   function actionList($complete = false)
   {
     $this->template->users = $this->model->getUsers($complete);
+    $this->template->exercises = $this->model->getExcercises();
   }
 
 
@@ -248,6 +254,7 @@ class HomepagePresenter extends BasePresenter
       $this->redirect('default');
     }
     $this->template->userProgress = $progress;
+    $this->template->exercises = $this->model->getExcercises();
   }
 
 

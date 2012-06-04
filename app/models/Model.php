@@ -168,6 +168,23 @@ class Model extends Nette\Object
   }
 
 
+  /**
+   * result format:
+   * [{
+   *  day
+   *  date
+   *  exercises = [
+   *    1 => {
+   *      series = [ id => count, ...]
+   *      sum
+   *      max
+   *      cumulativeSum
+   *      cumulativeMax
+   *    },
+   *    2 => ...
+   *  ]
+   * }, { skipped = 47 }
+   */
   function getUserProgressNew($userName, $type)
   {
     $user = $this->db->table('users')->where('name', $userName)->where('type', $type)->fetch();
@@ -178,7 +195,7 @@ class Model extends Nette\Object
       select
         to_days(day) day,
         date(day) date,
-        group_concat(concat(id, ":", count) order by id) series
+        group_concat(concat(id, ":", exerciseId, ":", count) order by id) series
       from series
       where userId = ?
         and deleted = false
@@ -198,10 +215,10 @@ class Model extends Nette\Object
     foreach ($res as $r) {
       if ($first) {
         if ($lastDay > $r->day) $progress[] = (object) array(
-          'day'    => $lastDay,
-          'date'   => $lastDate->format('Y-m-d'),
-          'series' => array(),
-          'today'  => true,
+          'day'       => $lastDay,
+          'date'      => $lastDate->format('Y-m-d'),
+          'exercises' => array(),
+          'today'     => true,
         );
         $first = false;
       }
@@ -219,22 +236,29 @@ class Model extends Nette\Object
             $progress[] = (object) array(
               'day'    => $lastDay - $i,
               'date'   => $lastDate->modify('- 1 days')->format('Y-m-d'),
-              'series' => array(),
+              'exercises' => array(),
             );
           }
         }
       }
 
-      $series = array();
+      $exercises = array();
       foreach (explode(',', $r->series) as $ex) {
-        list($id, $count) = explode(':', $ex);
-        $series[$id] = $count;
+        list($id, $exerciseId, $count) = explode(':', $ex);
+        if (!isset($exercises[$exerciseId])) {
+          $exercises[$exerciseId] = (object) array(
+            'series' => array(),
+          );
+        }
+
+        $exercises[$exerciseId]->series[$id] = $count;
       }
+      ksort($exercises);
 
       $progress[] = (object) array(
-        'day'    => $r->day,
-        'date'   => $r->date,
-        'series' => $series,
+        'day'       => $r->day,
+        'date'      => $r->date,
+        'exercises' => $exercises,
       );
 
       $lastDay = $r->day;
@@ -242,21 +266,23 @@ class Model extends Nette\Object
     }
 
     // do aggregations
-    $sumTotal = $currentMax = $cumulativeMax = $cumulativeDaySumMax = 0;
+    $sumTotal = $currentMax = $cumulativeMax = $cumulativeDaySumMax = array(1 => 0, 2 => 0); // exerciseId => count
     $progress = array_reverse($progress);
     foreach ($progress as $row) {
       if (isset($row->skipped))
         continue;
 
-      $row->sum = array_sum($row->series);
-      $row->max = $row->series ? max($row->series) : 0;
+      foreach ($row->exercises as $exId => $ex) {
+        $ex->sum = array_sum($ex->series);
+        $ex->max = $ex->series ? max($ex->series) : 0;
 
-      $cumulativeDaySumMax = max($cumulativeDaySumMax, $row->sum);
-      $row->sumRecord = $row->sum >= $cumulativeDaySumMax;
+        $cumulativeDaySumMax[$exId] = max($cumulativeDaySumMax[$exId], $ex->sum);
+        $ex->sumRecord = $ex->sum >= $cumulativeDaySumMax[$exId];
 
-      $row->cumulativeMax = $currentMax = max($currentMax, $row->max);
-      $row->cumulativeSum = $cumulativeMax = ($cumulativeMax + $row->sum);
-      $sumTotal += $row->sum;
+        $ex->cumulativeMax = $currentMax[$exId] = max($currentMax[$exId], $ex->max);
+        $ex->cumulativeSum = $cumulativeMax[$exId] = ($cumulativeMax[$exId] + $ex->sum);
+        $sumTotal[$exId] += $ex->sum;
+      }
     }
     $progress = array_reverse($progress);
 
@@ -265,7 +291,7 @@ class Model extends Nette\Object
     $user->startDay = $startDay;
     $user->endDay   = $endDay;
     $user->today    = $today;
-    $user->remaining = $endDay - reset($progress)->day;
+    $user->remaining = $progress ? $endDay - reset($progress)->day : null;
 
     return $user;
   }
@@ -275,7 +301,9 @@ class Model extends Nette\Object
   function getUsers($completeList = false)
   {
     $res = $this->db->query('
-      select u.*,
+      select 
+        u.id, u.name, u.registered, u.started, u.type,
+        s.exerciseId,
         ifnull(max(count), 0) max,
         ifnull(sum(count), 0) sum,
         to_days(now()) - to_days(u.started)     days,
@@ -284,11 +312,26 @@ class Model extends Nette\Object
         count(distinct to_days(s.day))          activeDays
 
       from users u
-      left join series s on u.id = s.userId
+      left join series s 
+        on u.id = s.userId
       where s.deleted = false and u.deleted = false
-      group by u.id
+      group by u.id, s.exerciseId
       order by max desc, u.id
     ', $this->duration);
+    //dump($res->fetchAll()); exit;
+
+    $us = array();
+    foreach ($res as $r) {
+      if (!isset($us[$r->id]))
+        $us[$r->id] = $r;
+
+      @$us[$r->id]->exercises[$r->exerciseId]->max = $r->max;
+      @$us[$r->id]->exercises[$r->exerciseId]->sum = $r->sum;
+      @$us[$r->id]->exercises[$r->exerciseId]->avg = $r->days > 0 ? round($r->sum / $r->days, 1) : 0;
+
+      unset($us[$r->id]->sum);
+      unset($us[$r->id]->max);
+    }
 
     $users = (object) array(
       'normal' => array(),
@@ -298,17 +341,17 @@ class Model extends Nette\Object
     );
 
     if ($completeList)
-      foreach ($res as $u)
+      foreach ($us as $u)
         $users->normal[] = $u;
     else
-      foreach ($res as $u) {
-        if ($u->max == 0)               $users->zero[]     = $u;
-        elseif ($u->daysUnactive >= 14) $users->unactive[] = $u;
-        elseif ($u->max > 140)          $users->super[]    = $u;
-        else                            $users->normal[]   = $u;
+      foreach ($us as $u) {
+        if     (!isset($u->exercises[1]) || $u->exercises[1]->max == 0)  $users->zero[]     = $u;
+        elseif ($u->daysUnactive >= 14)      $users->unactive[] = $u;
+        elseif ($u->exercises[1]->max > 140) $users->super[]    = $u;
+        else                                 $users->normal[]   = $u;
       }
 
-    $users->normalSum = array_sum(array_map(function ($u) { return $u->sum; }, $users->normal));
+    //$users->normalSum = array_sum(array_map(function ($u) { return $u->sum; }, $users->normal));
     return $users;
   }
 
@@ -350,11 +393,12 @@ class Model extends Nette\Object
   }
 
 
-  function addSeries($user, $count)
+  function addSeries($user, $count, $exerciseId)
   {
     $this->db->exec('insert into series', array(
-      'userId' => $user->identity->id,
-      'count' => $count,
+      'userId'     => $user->identity->id,
+      'count'      => $count,
+      'exerciseId' => $exerciseId,
     ));
   }
 
@@ -368,6 +412,12 @@ class Model extends Nette\Object
       throw new ModelException("Nemůžete smazat cizí sérii kliků.");
 
     $this->db->exec('update series set deleted = true where id = ?', $seriesId);
+  }
+
+
+  function getExcercises()
+  {
+    return $this->db->table('exercise')->fetchPairs('id', 'title');
   }
 
 

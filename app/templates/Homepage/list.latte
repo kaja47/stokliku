@@ -12,19 +12,19 @@
     <tr n:foreach="$users as $u">
       <td>{$iterator->counter}</td>
       <td><a n:href="user $u->name, $u->type"><span n:tag-if="$user->loggedIn && $user->id == $u->id" style="color: red;">{$u|userName}<span></a></td>
-      <td class="num">{$u->max}</td>
-      <td class="num">{$u->sum}</td>
+      <td class="num">{foreach $u->exercises as $exId => $e}{include #colorSeries exerciseId => $exId, count => $e->max}{sep}, {/sep}{/foreach}</td>
+      <td class="num">{foreach $u->exercises as $exId => $e}{include #colorSeries exerciseId => $exId, count => $e->sum}{sep}, {/sep}{/foreach}</td>
       <td class="num" title="neaktivní už: {$u->daysUnactive} dnů, skutečně klikoval: {$u->activeDays} dnů">{$u->days}</td>
-      <td class="num">{$u->days > 0 ? round($u->sum / $u->days, 1) : 0}</td>
+      <td class="num">{foreach $u->exercises as $exId => $e}{include #colorSeries exerciseId => $exId, count => $e->avg}{sep}, {/sep}{/foreach}</td>
     </tr>
   </table>
 {/block}
 
 
 {block content}
-	<h2>jak si vedou ostatní</h2>
+  <h2>jak si vedou ostatní</h2>
   {include #userList users => $users->normal}
-  <div>Všichni dohromady udělali {$users->normalSum} kliků.</div>
+  {*<div>Všichni dohromady udělali {$users->normalSum} kliků.</div>*}
 
   <a n:href="list true">kompletní seznam</a>
   <br />
@@ -44,13 +44,11 @@
 
   <div n:if="$users->unactive">
   <strong>neaktivní:</strong>
-  {dump $users->unactive}
   {foreach $users->unactive as $u}
-    <a n:href="user $u->name, $u->type">{$u->name}</a> (<span title="celkem {$u->sum} kliků">{$u->max}</span>) {sep}, {/sep}
+    <a n:href="user $u->name, $u->type">{$u->name}</a> ({foreach $u->exercises as $exId => $e}<span title="celkem {$e->sum}">{include #colorSeries exerciseId => $exId, count => $e->max}</span>{sep}, {/sep}{/foreach}) {sep}, {/sep}
   {/foreach}
   </div>
 
 	<hr>
 
 {/block}
-
