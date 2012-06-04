@@ -30,19 +30,28 @@ $container = $configurator->loadConfig(__DIR__ . '/config.neon');
 
 $container->session->setExpiration('+14 days');
 
+
+$typeFilterTable = array(
+  Route::FILTER_TABLE => array(
+    'u' => 'twitter',
+    'r' => 'login',
+  ),
+);
+
 // Setup router
 $router = $container->router;
 $router[] = new Route('index.php', 'Homepage:default', Route::ONE_WAY);
-$router[] = new Route('<type>/<name>[/<page=1>]', array(
+$router[] = new Route('<type>/<name>.json', array(
+  'presenter' => 'Homepage',
+  'action' => 'export',
+  'type' => $typeFilterTable,
+));
+$router[] = new Route('<type>/<name>', array(
   'presenter' => 'Homepage',
   'action' => 'user',
-  'type' => array(
-    Route::FILTER_TABLE => array(
-      'u' => 'twitter',
-      'r' => 'login',
-    ),
-  ),
+  'type' => $typeFilterTable,
 ));
+$router[] = new Route('list.json',  'Homepage:listExport');
 $router[] = new Route('list',  'Homepage:list');
 $router[] = new Route('stats', 'Homepage:stats');
 $router[] = new Route('<presenter>/<action>[/<id>]', 'Homepage:default');

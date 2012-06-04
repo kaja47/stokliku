@@ -18,6 +18,14 @@ class HomepagePresenter extends BasePresenter
 	}
 
 
+
+  private function acceptJson()
+  {
+    $httpRequest = $this->getService('httpRequest');
+    return isset($httpRequest->headers['accept']) && $httpRequest->headers['accept'] === 'application/json';
+  }
+
+
   public function actionTwitterLogin()
   {
     $params = $this->getContext()->params;
@@ -234,8 +242,29 @@ class HomepagePresenter extends BasePresenter
 
   function actionList($complete = false)
   {
+    if ($this->acceptJson())
+      $this->redirect('listExport');
+
     $this->template->users = $this->model->getUsers($complete);
     $this->template->exercises = $this->model->getExcercises();
+  }
+
+
+  function actionListExport()
+  {
+    $users = $this->model->getUsers(true);
+    $res = array();
+    foreach ($users->normal as $u) {
+      $res[] = array(
+        'name' => $u->name,
+        'type' => $u->type,
+        'registered' => $u->registered,
+        'max' => $u->max,
+        'sum' => (int) $u->sum,
+      );
+    }
+
+    $this->sendResponse(new Nette\Application\Responses\JsonResponse($res));
   }
 
 
@@ -247,6 +276,9 @@ class HomepagePresenter extends BasePresenter
 
   function actionUser($name, $type)
   {
+    if ($this->acceptJson())
+      $this->redirect('export', $name, $type);
+
     $progress = $this->model->getUserProgressNew($name, $type);
 
     if (!$progress) {
@@ -255,6 +287,38 @@ class HomepagePresenter extends BasePresenter
     }
     $this->template->userProgress = $progress;
     $this->template->exercises = $this->model->getExcercises();
+  }
+
+
+  /** format:
+   *  [
+   *    date => [
+   *      exerciseId => [ count1, count2, ... ],
+   *      exc2 => ...
+   *    ],
+   *    date2 => ...
+   *  ]
+   */
+  function actionExport($name, $type)
+  {
+    $progress = $this->model->getUserProgressNew($name, $type);
+
+    if (!$progress) {
+      throw new Nette\Application\BadRequestException;
+    }
+
+    $progress = $progress->progress;
+    $res = array();
+
+    foreach ($progress as $d) {
+      if (isset($d->skipped) || empty($d->exercises))
+        continue;
+
+      $toInt = function ($i) { return (int)$i; };
+      $res[$d->date] = array_map(function ($e) use($toInt) { return array_map($toInt, array_values($e->series)); }, $d->exercises);
+    }
+
+    $this->sendResponse(new Nette\Application\Responses\JsonResponse($res));
   }
 
 
