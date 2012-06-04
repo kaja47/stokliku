@@ -369,15 +369,18 @@ class Model extends Nette\Object
       group by date(day)
     ')->fetchAll();
 
-    foreach ($res as $k => $r) { $r->dayActiveUserIds = explode(',', $r->dayActiveUserIds); }
+    $getActiveUsers = function ($res, $daysBack, $k) {
+      $start = $k - $daysBack + 1;
+      $pastDays = array_slice($res, max($start, 0), $daysBack + min($start, 0));
+      $pastDays = array_map(function ($a) { return $a->dayActiveUserIds; }, $pastDays);
+      return count(array_unique(call_user_func_array('array_merge', $pastDays)));
+    };
 
     foreach ($res as $k => $r) {
-      $getActiveUsers = function ($res, $daysBack, $k) {
-        $start = $k - $daysBack + 1;
-        $pastDays = array_slice($res, max($start, 0), $daysBack + min($start, 0));
-        $pastDays = array_map(function ($a) { return $a->dayActiveUserIds; }, $pastDays);
-        return count(array_unique(call_user_func_array('array_merge', $pastDays)));
-      };
+      // tento krok se může provádět současně s tím následujícím, jenom proto, že funkce `getActiveUsers` potřebuje
+      // vlastnost `dayActiveUserIds` nastavenou u tohoto a předchozích elementů
+      $r->dayActiveUserIds = explode(',', $r->dayActiveUserIds);
+
       $r->activeUsers = array(
          3 => $getActiveUsers($res,  3, $k),
          7 => $getActiveUsers($res,  7, $k),
