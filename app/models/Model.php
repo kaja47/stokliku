@@ -361,6 +361,7 @@ class Model extends Nette\Object
     $res = $this->db->query('
       select
         date(day) date,
+        to_days(day) day,
         count(distinct userId) dayActiveUsers,
         count(*)   daySeries,
         sum(count) daySum,
@@ -392,7 +393,19 @@ class Model extends Nette\Object
       unset($r->dayActiveUserIds);
     }
 
-    return $res;
+    $lastDay = reset($res)->day;
+    $data = array();
+    foreach ($res as $k => $r) {
+      // insert skipped days
+      $skippedDays = $r->day - $lastDay - 1;
+      if ($skippedDays > 0)
+        $data[] = (object) array('skipped' => $skippedDays);
+
+      $data[] = $r;
+      $lastDay = $r->day;
+    }
+
+    return $data;
   }
 
 
