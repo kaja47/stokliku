@@ -216,37 +216,37 @@ class Model extends Nette\Object
   /** return list of users and their maximum */
   function getUsers($completeList = false)
   {
-    $res = $this->db->query('
+    $userRes = $this->db->query('
       select 
         u.id, u.name, u.registered, u.started, u.type,
-        s.exerciseId,
+        to_days(now()) - to_days(u.started)     days,
+        to_days(u.started) + ? - to_days(now()) daysLeft
+      from users u
+      where u.deleted = false
+    ', $this->duration);
+
+    $exercisesRes = $this->db->query('
+      select
+        userId, exerciseId,
         ifnull(max(count), 0) max,
         ifnull(sum(count), 0) sum,
-        to_days(now()) - to_days(u.started)     days,
-        to_days(u.started) + ? - to_days(now()) daysLeft,
+        round(ifnull(sum(count) / (datediff(max(day), min(day))+1), 0), 1) avg,
         to_days(now()) - to_days(max(s.day))    daysUnactive,
-        count(distinct to_days(s.day))          activeDays
+        count(distinct to_days(s.day))          activeDays,
+        max( ((to_days(now()) - to_days(s.day)) < 28) * count ) lastFourWeeks
+      from series s
+      where deleted = false
+      group by userId, exerciseId
+    ');
 
-      from users u
-      left join series s 
-        on u.id = s.userId
-      where s.deleted = false and u.deleted = false
-      group by u.id, s.exerciseId
-      order by max desc, u.id
-    ', $this->duration);
-    //dump($res->fetchAll()); exit;
+    $exercises = array();
+    foreach($exercisesRes as $ex)
+      $exercises[$ex->userId][$ex->exerciseId] = $ex;
 
-    $us = array();
-    foreach ($res as $r) {
-      if (!isset($us[$r->id]))
-        $us[$r->id] = $r;
-
-      @$us[$r->id]->exercises[$r->exerciseId]->max = $r->max;
-      @$us[$r->id]->exercises[$r->exerciseId]->sum = $r->sum;
-      @$us[$r->id]->exercises[$r->exerciseId]->avg = $r->days > 0 ? round($r->sum / $r->days, 1) : 0;
-
-      unset($us[$r->id]->sum);
-      unset($us[$r->id]->max);
+    $us = $userRes->fetchAll();
+    foreach ($us as $u) {
+      $u->exercises = isset($exercises[$u->id]) ? $exercises[$u->id] : array();
+      $u->daysUnactive = $u->exercises ? min(array_map(function ($e) { return $e->daysUnactive; }, $u->exercises)) : null;
     }
 
     $users = (object) array(
@@ -261,13 +261,25 @@ class Model extends Nette\Object
         $users->normal[] = $u;
     else
       foreach ($us as $u) {
-        if     (!isset($u->exercises[1]) || $u->exercises[1]->max == 0)  $users->zero[]     = $u;
-        elseif ($u->daysUnactive >= 14)      $users->unactive[] = $u;
-        elseif ($u->exercises[1]->max > 140) $users->super[]    = $u;
-        else                                 $users->normal[]   = $u;
+        $exs = $u->exercises;
+        $hasZero = true;
+        foreach ($exs as $e) if ($e->max > 0) $hasZero = false;
+
+        if ($hasZero)  
+          $users->zero[] = $u;
+        elseif ($u->daysUnactive >= 14)
+          $users->unactive[] = $u;
+        elseif (isset($exs[1]) && $exs[1]->max > 150)
+          $users->super[] = $u;
+        else
+          $users->normal[] = $u;
       }
 
-    //$users->normalSum = array_sum(array_map(function ($u) { return $u->sum; }, $users->normal));
+    $users->normalSum = array();
+    foreach ($users->normal as $u)
+      foreach ($u->exercises as $exId => $ex)
+        @$users->normalSum[$exId] += $ex->sum; // @ intentionally
+
     return $users;
   }
 
