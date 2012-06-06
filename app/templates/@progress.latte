@@ -1,13 +1,15 @@
+{define #colorSeries}<span n:tag-if="$exerciseId == 2" style="color: #707000;">{$count}</span>{/define}
+
   <h2>
-  {dump $userProgress}
-    <a n:tag-if="$userProgress->type == 'twitter'" href="http://twitter.com/{$userProgress->name}">{$userProgress|userName}</a></h2>
+  <a n:tag-if="$userProgress->type == 'twitter'" href="http://twitter.com/{$userProgress->name}">{$userProgress|userName}</a></h2>
 
   {var $isLoggedUser = $user->id == $userProgress->id}
 
 	{if $isLoggedUser}
     Právě teď jsem udělal 
     {form seriesForm}
-      {input count} kliků v kuse.
+      {input count}
+      {input exercise} v kuse.
       {input add}
     {/form}
 
@@ -27,48 +29,40 @@
   {/if}
 
 
-{block #paging}
-  <div if="count($userProgress->progress) > 1">
-    stránka: 
-    {foreach $userProgress->progress as $i => $progress}
-    <a href="#page{$i}" onclick="$('.tab').hide(); $('#tab-{$i}').show();">{$i + 1}</a>{sep}, {/sep}
-    {/foreach}
+  <div n:if="$userProgress->remaining > 0" style="float: right;">zbývá {$userProgress->remaining} {$userProgress->remaining < 5 ? 'dny' : 'dní'}</div>
 
-    <script>
-      $(function () { $('.tab').hide(); $('.tab:last').show(); });
-    </script>
-  </div>
-{/block}
-
-    
-  {foreach $userProgress->progress as $i => $progress}
-  <table class="tab" id="tab-{$i}" style="width: 100%;">
+  <table style="width: 100%;">
     <tr>
-      <td style="width: 5%;">#</td>
       <td style="width: 16%;">den</td>
-      <td style="min-width: 12em;">kliky</td>
+      <td style="min-width: 12em;">kliky a {include #colorSeries exerciseId => 2, count => 'shyby'}
+      {*foreach $exercises as $exId => $ex}
+        {include #colorSeries exerciseId => $exId, count => $ex}
+      {/foreach*}
+      </td>
       <td style="width: 10%;">celkem</td>
     </tr>
-    <tr n:foreach="$progress as $dayNumber => $day" n:class="$day->projection ? projection" n:attr="style => $day->lastDay ? 'border-bottom: 2px solid black;'">
-      <td>{$dayNumber}</td>
-      <td>{if $day->today}<strong>dnes</strong>{else}{$day->date|date:"d. m. Y"}{/if}</td>
+    <tr n:foreach="$userProgress->progress as $dayNumber => $day">
+    {if isset($day->skipped)}<td colspan="3" class="projection">zimní spánek: {$day->skipped} {$day->skipped < 5 ? 'dny' : 'dnů'}</td>
+    {else}
+      <td>{*if $day->today}<strong>dnes</strong>{else*}{$day->date|date:"d. m. Y"}{*/if*}</td>
       <td>
-        {$day->projection ? 'todo: ' : ''}
-        {foreach $day->series as $sid => $s}
-          {var $highligtSeries = !$day->projection && $s == $day->cumulativeMax}
-          {var $canDelete = $day->ago < 1 && !$day->projection && $isLoggedUser}
-          <strong n:tag-if="$highligtSeries">{$s}</strong><a class="del" n:if="$canDelete" onclick="return confirm('Opravdu chcete smazat sérii '+{$s}+' kliků?')" n:href="deleteSeries! $sid" title="Smazat sérii {$s} kliků">[x]</a>{sep}, {/sep}
+        {foreach $day->exercises as $exId => $ex}
+        {foreach $ex->series as $seriesId => $s}
+          {var $canDelete = ($userProgress->today - $day->day < 1) && $isLoggedUser}
+          <strong n:tag-if="$s == $ex->cumulativeMax">{include #colorSeries exerciseId => $exId, count => $s}</strong><a class="del" n:if="$canDelete" onclick="return confirm('Opravdu chcete smazat sérii '+{$s}+' kliků?')" n:href="deleteSeries! $seriesId" title="Smazat sérii {$s} kliků">[x]</a>{sep}, {/sep}
+        {/foreach} {sep}|{/sep}
         {/foreach}
       </td>
-      <td title="celkem {$day->cumulativeSum} kliků"><strong n:tag-if="$day->sumRecord">{$day->projection ? '' : $day->sum}</strong></td>
+      <td>
+        {foreach $day->exercises as $exId => $ex}
+        <strong n:tag-if="$ex->sumRecord"><span title="celkem {$exercises[$exId]}: {$ex->cumulativeSum}">{include #colorSeries exerciseId => $exId, count => $ex->sum}</span></strong>
+        {/foreach}
+      </td>
+    {/if}
     </tr>
     <tr>
+      <td>celkem</td>
       <td></td>
-      <td>celkem kliků</td>
-      <td></td>
-      <td>{$userProgress->sumTotal}</td>
+      <td>{foreach $userProgress->sumTotal as $exId => $sumTotal}<strong>{include #colorSeries exerciseId => $exId, count => $sumTotal}</strong>{sep}, {/sep}{/foreach}</td>
     </tr>
   </table>
-  {/foreach}
-
-{include #paging}
