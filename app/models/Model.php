@@ -249,6 +249,8 @@ class Model extends Nette\Object
       $u->daysUnactive = $u->exercises ? min(array_map(function ($e) { return $e->daysUnactive; }, $u->exercises)) : null;
     }
 
+    uasort($us, function ($a, $b) { return @$a->exercises[1]->max < @$b->exercises[1]->max; });
+
     $users = (object) array(
       'normal' => array(),
       'super' => array(),
