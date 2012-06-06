@@ -279,7 +279,7 @@ class HomepagePresenter extends BasePresenter
     if ($this->acceptJson())
       $this->redirect('export', $name, $type);
 
-    $progress = $this->model->getUserProgressNew($name, $type);
+    $progress = $this->model->getUserProgress($name, $type);
 
     if (!$progress) {
       $this->flashMessage('No such user');
@@ -301,7 +301,7 @@ class HomepagePresenter extends BasePresenter
    */
   function actionExport($name, $type)
   {
-    $progress = $this->model->getUserProgressNew($name, $type);
+    $progress = $this->model->getUserProgress($name, $type);
 
     if (!$progress) {
       throw new Nette\Application\BadRequestException;

@@ -84,90 +84,6 @@ class Model extends Nette\Object
   }
 
 
-  function getUserProgress($userName, $type)
-  {
-    $user = $this->db->table('users')->where('name', $userName)->where('type', $type)->fetch();
-    if (!$user)
-      return NULL;
-
-    $res = $this->db->query('
-      select
-        to_days(day) - to_days(?) + 1 day,
-        group_concat(concat(id, ":", count) order by id) series
-      from series
-      where userId = ?
-        and deleted = false
-        and day > ?
-      group by date(day)
-    ', $user->started, $user->id, $user->started)->fetchAll();
-
-    $nowDay = $this->db->query('select to_days(now()) - to_days(?) + 1 day', $user->started)->fetch()->day;
-
-    // base dataset
-    $progress = array();
-    for ($i = 1; $i <= max($this->duration, $nowDay); $i++) {
-      $date = new Nette\DateTime($user->started);
-      $progress[$i] = (object) array(
-        'series'      => array(),
-        'projection'  => false,
-        'date'        => $date->modify('+ ' . ($i - 1) . ' day'),
-        'ago'         => $nowDay - $i,
-        'today'       => $i == $nowDay,
-        'lastDay'     => $i == $this->duration,
-      );
-    }
-
-    // merge database data
-    foreach ($res as $d) {
-      $series = array();
-      foreach (explode(',', $d->series) as $ex) {
-        list($id, $count) = explode(':', $ex);
-        $series[$id] = $count;
-      }
-      $progress[$d->day]->series = $series;
-    }
-
-    // do aggregations
-    $sumTotal = $currentMax = $cumulativeMax = $cumulativeDaySumMax = 0;
-    foreach ($progress as $day => $row) {
-      $row->sum = array_sum($row->series);
-      $row->max = $row->series ? max($row->series) : 0;
-
-      $cumulativeDaySumMax = max($cumulativeDaySumMax, $row->sum);
-      $row->sumRecord = $row->sum >= $cumulativeDaySumMax;
-
-      $row->cumulativeMax = $currentMax = max($currentMax, $row->max);
-      $row->cumulativeSum = $cumulativeMax = ($cumulativeMax + $row->sum);
-      $sumTotal += $row->sum;
-    }
-
-    // do projection
-    $startDay = ($progress[$nowDay]->sum === 0) ? $nowDay : ($nowDay + 1);
-    $leftDays = $this->duration - $startDay + 1;
-    if ($leftDays > 0) {
-      $step = ((float) $this->goal - $currentMax) / $leftDays;
-      if ($step >= 0) {
-        $projection = $currentMax;
-      } else { // user did more than $this->goal
-        $projection = $this->goal;
-        $step = 0;
-      }
-      for ($i = $startDay; $i <= $this->duration; $i++) {
-        $projection += $step;
-        $progress[$i]->series = array((int)$projection);
-        $progress[$i]->projection = true;
-      }
-    }
-
-    // když uživatel cvičí déle než 6 týdnů, data se rozdělí do několika záložek
-    $p = (count($progress) > $this->duration) ? array_chunk($progress, 25, true) : array($progress);
-    $user->progress = $p;
-    $user->sumTotal = $sumTotal; // celkem kliků
-
-    return $user;
-  }
-
-
   /**
    * result format:
    * [{
@@ -185,7 +101,7 @@ class Model extends Nette\Object
    *  ]
    * }, { skipped = 47 }
    */
-  function getUserProgressNew($userName, $type)
+  function getUserProgress($userName, $type)
   {
     $user = $this->db->table('users')->where('name', $userName)->where('type', $type)->fetch();
     if (!$user)
