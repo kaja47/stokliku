@@ -97,8 +97,9 @@ class Model extends Nette\Object
       from series
       where userId = ?
         and deleted = false
+        and day > ?
       group by date(day)
-    ', $user->started, $user->id)->fetchAll();
+    ', $user->started, $user->id, $user->started)->fetchAll();
 
     $nowDay = $this->db->query('select to_days(now()) - to_days(?) + 1 day', $user->started)->fetch()->day;
 
@@ -158,10 +159,10 @@ class Model extends Nette\Object
       }
     }
 
-    // celkem kliků
-
-    $user->progress = $progress;
-    $user->sumTotal = $sumTotal;
+    // když uživatel cvičí déle než 6 týdnů, data se rozdělí do několika záložek
+    $p = (count($progress) > $this->duration) ? array_chunk($progress, 25, true) : array($progress);
+    $user->progress = $p;
+    $user->sumTotal = $sumTotal; // celkem kliků
 
     return $user;
   }

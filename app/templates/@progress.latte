@@ -25,15 +25,31 @@
     {/form}
     </span>*}
   {/if}
+
+
+{block #paging}
+  <div if="count($userProgress->progress) > 1">
+    stránka: 
+    {foreach $userProgress->progress as $i => $progress}
+    <a href="#page{$i}" onclick="$('.tab').hide(); $('#tab-{$i}').show();">{$i + 1}</a>{sep}, {/sep}
+    {/foreach}
+
+    <script>
+      $(function () { $('.tab').hide(); $('.tab:last').show(); });
+    </script>
+  </div>
+{/block}
+
     
-  <table>
+  {foreach $userProgress->progress as $i => $progress}
+  <table class="tab" id="tab-{$i}" style="width: 100%;">
     <tr>
-      <td>#</td>
-      <td>den</td>
+      <td style="width: 5%;">#</td>
+      <td style="width: 16%;">den</td>
       <td style="min-width: 12em;">kliky</td>
-      <td>celkem</td>
+      <td style="width: 10%;">celkem</td>
     </tr>
-    <tr n:foreach="$userProgress->progress as $dayNumber => $day" n:class="$day->projection ? projection" n:attr="style => $day->lastDay ? 'border-bottom: 2px solid black;'">
+    <tr n:foreach="$progress as $dayNumber => $day" n:class="$day->projection ? projection" n:attr="style => $day->lastDay ? 'border-bottom: 2px solid black;'">
       <td>{$dayNumber}</td>
       <td>{if $day->today}<strong>dnes</strong>{else}{$day->date|date:"d. m. Y"}{/if}</td>
       <td>
@@ -53,3 +69,6 @@
       <td>{$userProgress->sumTotal}</td>
     </tr>
   </table>
+  {/foreach}
+
+{include #paging}
