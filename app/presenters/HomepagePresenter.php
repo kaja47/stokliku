@@ -229,6 +229,12 @@ class HomepagePresenter extends BasePresenter
   }
 
 
+  function actionStats()
+  {
+    $this->template->stats = $this->model->getStats();
+  }
+
+
   function actionUser($name, $type)
   {
     $progress = $this->model->getUserProgress($name, $type);

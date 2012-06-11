@@ -43,7 +43,8 @@ $router[] = new Route('<type>/<name>[/<page=1>]', array(
     ),
   ),
 ));
-$router[] = new Route('list', 'Homepage:list');
+$router[] = new Route('list',  'Homepage:list');
+$router[] = new Route('stats', 'Homepage:stats');
 $router[] = new Route('<presenter>/<action>[/<id>]', 'Homepage:default');
 
 

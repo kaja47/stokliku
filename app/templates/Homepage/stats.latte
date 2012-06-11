@@ -1,0 +1,25 @@
+{block content}
+
+  <table>
+    <tr>
+      <td>den</td>
+      <td>∑ uživatelů</td>
+      <td>∑ sérií</td>
+      <td>∑ kliků</td>
+      <td title="aktivní v posledních 3 dnech">a3</td>
+      <td title="aktivní v posledních 7 dnech">a7</td>
+      <td title="aktivní v posledních 14 dnech">a14</td>
+    </tr>
+
+    <tr n:foreach="$stats as $d">
+      <td>{$d->date}</td>
+      <td>{$d->dayActiveUsers}</td>
+      <td>{$d->daySeries}</td>
+      <td>{$d->daySum}</td>
+      <td>{$d->activeUsers[3]}</td>
+      <td>{$d->activeUsers[7]}</td>
+      <td>{$d->activeUsers[14]}</td>
+    </tr>
+  </table>
+
+{/block}
