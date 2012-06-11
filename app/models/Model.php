@@ -79,7 +79,7 @@ class Model extends Nette\Object
 
     if ($dateTS > $firstSeries)
       throw new ModelException('Tato změna není dovolena.');
-      
+
     $this->db->exec('update users set started = ? where id = ?', $date, $user->id);
   }
 
@@ -127,25 +127,26 @@ class Model extends Nette\Object
     }
 
     // do aggregations
-    $sumTotal = $currentMax = 0;
+    $sumTotal = $currentMax = $cumulativeMax = 0;
     foreach ($progress as $day => $row) {
       $row->sum = array_sum($row->series);
       $row->max = $row->series ? max($row->series) : 0;
       $row->cumulativeMax = $currentMax = max($currentMax, $row->max);
+      $row->cumulativeSum = $cumulativeMax = ($cumulativeMax + $row->sum);
       $sumTotal += $row->sum;
     }
 
     // do projection
     $startDay = ($progress[$nowDay]->sum === 0) ? $nowDay : ($nowDay + 1);
     $leftDays = $this->duration - $startDay + 1;
-    if ($leftDays > 0) { 
+    if ($leftDays > 0) {
       $step = ((float) $this->goal - $currentMax) / $leftDays;
       if ($step >= 0) {
         $projection = $currentMax;
       } else { // user did more than $this->goal
         $projection = $this->goal;
         $step = 0;
-      } 
+      }
       for ($i = $startDay; $i <= $this->duration; $i++) {
         $projection += $step;
         $progress[$i]->series = array((int)$projection);
