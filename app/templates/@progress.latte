@@ -44,7 +44,7 @@
           <strong n:tag-if="$highligtSeries">{$s}</strong><a class="del" n:if="$canDelete" onclick="return confirm('Opravdu chcete smazat sérii '+{$s}+' kliků?')" n:href="deleteSeries! $sid" title="Smazat sérii {$s} kliků">[x]</a>{sep}, {/sep}
         {/foreach}
       </td>
-      <td title="celkem {$day->cumulativeSum} kliků">{$day->projection ? '' : $day->sum}</td>
+      <td title="celkem {$day->cumulativeSum} kliků"><strong n:tag-if="$day->sumRecord">{$day->projection ? '' : $day->sum}</strong></td>
     </tr>
     <tr>
       <td></td>

@@ -127,10 +127,14 @@ class Model extends Nette\Object
     }
 
     // do aggregations
-    $sumTotal = $currentMax = $cumulativeMax = 0;
+    $sumTotal = $currentMax = $cumulativeMax = $cumulativeDaySumMax = 0;
     foreach ($progress as $day => $row) {
       $row->sum = array_sum($row->series);
       $row->max = $row->series ? max($row->series) : 0;
+
+      $cumulativeDaySumMax = max($cumulativeDaySumMax, $row->sum);
+      $row->sumRecord = $row->sum >= $cumulativeDaySumMax;
+
       $row->cumulativeMax = $currentMax = max($currentMax, $row->max);
       $row->cumulativeSum = $cumulativeMax = ($cumulativeMax + $row->sum);
       $sumTotal += $row->sum;
