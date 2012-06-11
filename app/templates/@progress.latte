@@ -1,0 +1,55 @@
+
+
+  <h2>
+  {dump $userProgress}
+    <a n:tag-if="$userProgress->type == 'twitter'" href="http://twitter.com/{$userProgress->name}">{$userProgress|userName}</a></h2>
+
+  {var $isLoggedUser = $user->id == $userProgress->id}
+
+	{if $isLoggedUser}
+    Právě teď jsem udělal 
+    {form seriesForm}
+      {input count} kliků v kuse.
+      {input add}
+    {/form}
+
+		<br />
+
+	{/if}
+  
+  {if $isLoggedUser}
+    <a href="#" onclick="document.getElementById('changeStartDate').style.display='inline'">Začal jsem jindy.</a>
+    <span id="changeStartDate" style="display: none;">
+    Kdy?
+    {form changeStartDate}
+      {input date}
+      {input change}
+    {/form}
+    </span>
+  {/if}
+    
+  <table>
+    <tr>
+      <td>#</td>
+      <td>den</td>
+      <td style="min-width: 12em;">kliky</td>
+      <td>celkem</td>
+    </tr>
+    <tr n:foreach="$userProgress->progress as $day => $d" n:class="$d->projection ? projection" n:attr="style => $d->lastDay ? 'border-bottom: 2px solid black;'">
+      <td>{$day}</td>
+      <td>{if $d->today}<strong>dnes</strong>{else}{$d->date|date:"d. m. Y"}{/if}</td>
+      <td>
+        {$d->projection ? 'todo: ' : ''}
+        {foreach $d->series as $sid => $s}
+          <strong n:tag-if="!$d->projection && $s == $d->cumulativeMax">{$s}<small><a onclick="return confirm('Opravdu chcete smazat sérii '+{$s}+' kliků?')" n:if="$d->ago < 1 && !$d->projection && $isLoggedUser" n:href="deleteSeries!! $sid" title="smazat sérii {$s} kliků">[x]</a></small></strong>{sep}, {/sep}
+        {/foreach}
+      </td>
+      <td>{$d->projection ? '' : $d->sum}</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>celkem kliků</td>
+      <td></td>
+      <td>{$userProgress->sumTotal}</td>
+    </tr>
+  </table>

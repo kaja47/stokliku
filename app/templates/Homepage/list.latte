@@ -1,0 +1,44 @@
+{block #userList}
+  <table>
+    <tr>
+      <td></td>
+      <td>korba</td>
+      <td>maximum kliků</td>
+      {*<td>zbývá dnů</td>*}
+    </tr>
+    <tr n:foreach="$users as $u">
+      <td>{$iterator->counter}</td>
+      <td><a n:href="user $u->name, $u->type"><span n:tag-if="$user->loggedIn && $user->id == $u->id" style="color: red;">{$u|userName}<span></a></td>
+      <td title="celkem {$u->sum} kliků">{$u->max}</td>
+      {*<td>{$u->daysLeft}</td>*}
+    </tr>
+  </table>
+{/block}
+
+
+{block content}
+	<h2>jak si vedou ostatní</h2>
+  {include #userList users => $users->normal}
+  <div>Všichni dohromady udělali {$users->normalSum} kliků.</div>
+
+  <div n:if="$users->zero">
+  <strong>zatím nula kliků:</strong>  
+  {foreach $users->zero as $u}
+    {$u->name} {sep}, {/sep}
+  {/foreach}
+  </div>
+
+  <div n:if="$users->unactive">
+  <strong>neaktivní:</strong>
+  {foreach $users->unactive as $u}
+    <a n:href="user $u->name, $u->type">{$u->name}</a> {sep}, {/sep}
+  {/foreach}
+  </div>
+
+  {if $users->super}
+	<h2>superhrdinové</h2>
+  {include #userList users => $users->super}
+  {/if}
+
+	<hr>
+{/block}

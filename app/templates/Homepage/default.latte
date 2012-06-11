@@ -1,0 +1,60 @@
+{block content}
+
+
+  {if $user->loggedIn}
+
+    {include ../@progress.latte userProgress => $userProgress}
+
+
+  {else}
+
+    <h2>100 kliků za 6 týdnů</h2>
+
+    <img src="{$basePath}/100kl.png" />
+
+    <br />
+
+    <div>
+      Na těchto stránkách si můžete jednoduše vést přehled kolik kliků jste právě udělali a jak postupujete k vytyčenému cíli #stoKliku.
+    </div>
+
+    <br />
+
+    <a href="https://twitter.com/#!/search?q=%23stoKliku">přímý přenos na hashtagu #stoKliku</a>
+
+<script src="http://widgets.twimg.com/j/2/widget.js"></script>
+
+<script>
+new TWTR.Widget({
+version: 2,
+type: 'search',
+search: '#stoKliku',
+interval: 30000,
+title: '#stoKliku',
+subject: '',
+width: 650,
+height: 300,
+theme: {
+shell: {
+background: '#8ec1da',
+            color: '#ffffff'
+       },
+tweets: {
+background: '#ffffff',
+            color: '#444444',
+            links: '#1985b5'
+        }
+},
+features: {
+scrollbar: false,
+           loop: true,
+           live: false,
+           behavior: 'default'
+          }
+}).render().start();
+</script>
+
+
+  {/if}
+
+{/block}
