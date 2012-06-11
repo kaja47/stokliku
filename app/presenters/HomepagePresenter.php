@@ -160,8 +160,12 @@ class HomepagePresenter extends BasePresenter
   function actionDefault()
   {
     if ($this->user->loggedIn) {
-      $this->redirect('user', $this->user->identity->name, $this->user->identity->type);
-      //$this->template->userProgress = $this->model->getUserProgress($this->user->identity->name);
+      $id = $this->user->identity;
+      // user is logged in but is not present in database, which indicates he was most likely deleted
+      if (!$this->model->getUser($id->name, $id->type)) 
+        $this->user->logout();
+      else
+        $this->redirect('user', $id->name, $id->type);
     }
   }
 
