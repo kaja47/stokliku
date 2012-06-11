@@ -182,7 +182,7 @@ class Model extends Nette\Object
 
       from users u
       left join series s on u.id = s.userId
-      where deleted = false
+      where s.deleted = false and u.deleted = false
       group by u.id
       order by max desc, u.id
     ', $this->duration);
