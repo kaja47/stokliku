@@ -44,7 +44,7 @@
     <tr n:foreach="$userProgress->progress as $dayNumber => $day">
     {if isset($day->skipped)}<td colspan="3" class="projection">zimní spánek: {$day->skipped} {$day->skipped < 5 ? 'dny' : 'dnů'}</td>
     {else}
-      <td>{*if $day->today}<strong>dnes</strong>{else*}{$day->date|date:"d. m. Y"}{*/if*}</td>
+      <td>{$day->date|date:"d. m. Y"}</td>
       <td>
         {foreach $day->exercises as $exId => $ex}
         {foreach $ex->series as $seriesId => $s}
@@ -55,7 +55,7 @@
       </td>
       <td>
         {foreach $day->exercises as $exId => $ex}
-        <strong n:tag-if="$ex->sumRecord"><span title="celkem {$exercises[$exId]}: {$ex->cumulativeSum}">{include #colorSeries exerciseId => $exId, count => $ex->sum}</span></strong>
+        <strong n:tag-if="$ex->sumRecord"><span title="celkem {$exercises[$exId]}: {$ex->cumulativeSum}">{include #colorSeries exerciseId => $exId, count => $ex->sum}</span></strong>{sep}, {/sep}
         {/foreach}
       </td>
     {/if}
